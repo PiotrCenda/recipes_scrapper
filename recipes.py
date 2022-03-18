@@ -6,7 +6,7 @@ import requests
 # TODO: w pętli tworzyć dla każdej strony słownik, appendować go do jsona, jeżeni nic w nim nie ma (chyba nie trzeba sprytniej...)
 
 '''
-generalnie to wszystkie przepisy zawierają się w tym zakresie
+generalnie to wszystkie przepisy zawierają się w tym zakresie (chyba)
 prawdopodobnie nie trzeba będzie uruchomić selenium, 
 bo dane są ukryte za html, a js je odkrywa, a nie są dodatkowo ściągane z serwera.
 po przemyśleniu też raczej nie trzeba zaczynać z scrapy, bo to jakiś za potężne narzędzie
@@ -23,3 +23,8 @@ response = requests.get(base_url + str(start_id))
 soup = BeautifulSoup(response.text, 'html.parser')
 recipe_title = soup.find('h3', attrs={"style": "font-family: Helvetica;"})
 print(recipe_title.text)
+
+recipe_ingridients_table = soup.find('table', attrs={"id": "myTable"}).find_all('tr')
+
+for ingridient_info in recipe_ingridients_table[1:]:
+    print(ingridient_info.find_all('td')[0:2])
