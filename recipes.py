@@ -28,6 +28,7 @@ end_id = 99989
 delchars = "!@#$%^&*()_+-=~`{}|[]:\"\\;'<>?/\t\r\n"
 
 
+# fetching html from url
 async def fetch(session, url):
     response = await session.get(url)
     response.raise_for_status()
@@ -35,6 +36,7 @@ async def fetch(session, url):
     return html
 
 
+# parsing html and extracting wanted info
 async def parse(session, url):
     try:
         html = await fetch(session=session, url=url)
@@ -61,8 +63,10 @@ async def parse(session, url):
         return [recipe_title, recipe_ingridients_table, recipe_instructions]
 
 
+# async function made to run all other async functions in "__main__"
 async def async_main():
     async with aiohttp.ClientSession() as session:
+        # makes list fo "tasks" to do asynchronously
         tasks = []
         
         for i in range(start_id, start_id+10):
@@ -73,6 +77,11 @@ async def async_main():
         
 
 if __name__ == "__main__":
+    # some windows error handling
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
+    # main runner
     asyncio.run(async_main())
+    
+    # feel the speed
     print(f"\ntime elapsed:  {time.perf_counter() - start_time}")
