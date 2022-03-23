@@ -3,19 +3,21 @@ import asyncio
 import aiohttp
 import time
 
-# TODO: zrobić do wysyłania zapytań i parsowania funkcję asynchroniczną!!!
-# TODO: zastanowić się, czy starcza nam takie proste przejście po każdym indeksie, czy coś lepszego co uruchamia selenium
-# TODO: wyciągnąć z każdej strony 1) nazwę, 2) listę ze składnikami, 3) instrukcję, 4) coś jeszcze?
 # TODO: w pętli tworzyć dla każdej strony słownik, appendować go do jsona, jeżeni nic w nim nie ma (chyba nie trzeba sprytniej...)
 # TODO: uładnianie i unifikowanie danych (usuwanie dziwnych znaków, może same małe litery itd)
 # TODO: dodać error handling, bo przy 10000 przepisów na penwo coś się spierdoli
 
 '''
-generalnie to wszystkie przepisy zawierają się w tym zakresie (chyba)
-prawdopodobnie nie trzeba będzie uruchomić selenium, 
-bo dane są ukryte za html, a js je odkrywa, a nie są dodatkowo ściągane z serwera.
-po przemyśleniu też raczej nie trzeba zaczynać z scrapy, bo to jakieś za potężne narzędzie
+struktura json'a:
+[
+    dla każdego przepisu:
+    {"id": ...,
+    "title:...
+    "instruction":...,
+    "ingirdients": [{"name":..., "quantity":..., "unit":...}]},
+]
 '''
+
 
 start_time = time.perf_counter()
 
@@ -25,7 +27,7 @@ start_id = 10000
 end_id = 99989
 
 # to prettify strings
-delchars = "!@#$%^&*()_+-=~`{}|[]:\"\\;'<>?/\t\r\n"
+delchars = "!@#$%^&*_+-=~`{}|[]:\"\\;'<>?/\t\r\n"
 
 
 # fetching html from url
