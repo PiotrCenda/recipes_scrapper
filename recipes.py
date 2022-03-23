@@ -1,24 +1,13 @@
 from bs4 import BeautifulSoup, element
-import asyncio
-import aiohttp
 import time
 import json
 import os
+import requests
+from multiprocessing.dummy import Pool as ThreadPool
 
 # TODO: w pętli tworzyć dla każdej strony słownik, appendować go do jsona, jeżeni nic w nim nie ma (chyba nie trzeba sprytniej...)
 # TODO: uładnianie i unifikowanie danych (usuwanie dziwnych znaków, może same małe litery itd)
 # TODO: dodać error handling, bo przy 10000 przepisów na penwo coś się spierdoli
-
-'''
-struktura json'a:
-[
-    dla każdego przepisu:
-    {"id": ...,
-    "title:...
-    "instruction":...,
-    "ingirdients": [{"name":..., "quantity":..., "unit":...}]},
-]
-'''
 
 start_time = time.perf_counter()
 
@@ -32,18 +21,17 @@ delchars = "!@#$%^&*_+-=~`{}|[]:\"\\;'<>?/\t\r\n"
 
 
 # fetching html from url
-async def fetch(session, url):
-    response = await session.get(url)
-    response.raise_for_status()
-    html = await response.text()
+def fetch(url):
+    response = requests.get(url=url)
+    html = response.text
     return html
 
 
 # parsing html and extracting wanted info
-async def parse(session, url_id):
-    url = base_url + str(url_id)
+def parse(url_id):
+    url = (base_url + str(url_id))
     try:
-        html = await fetch(session=session, url=url)
+        html = fetch(url=url)
     except Exception as e:
         print(e)  # trzeba pewnie rozwinąć
     else:
@@ -55,21 +43,7 @@ async def parse(session, url_id):
         recipe_dict = create_recipe_dict(url_id=url_id, title=recipe_title,
                                          ingridients=recipe_ingridients_table,
                                          instuctions=recipe_instructions)
-        add_recipe_to_json(recipe_dict)
         return recipe_dict
-
-
-# async function made to run all other async functions in "__main__"
-async def async_main():
-    async with aiohttp.ClientSession() as session:
-        # makes list fo "tasks" to do asynchronously
-        tasks = []
-
-        for i in range(start_id, end_id):
-            url_id = i
-            tasks.append(asyncio.ensure_future(parse(session, url_id)))
-
-        await asyncio.gather(*tasks)
 
 
 def check_if_json_exists():
@@ -110,17 +84,29 @@ def add_recipe_to_json(recipe: dict):
         file.seek(0)
         json.dump(data, file, indent=4)
         file.close()
-        # json.dump(recipe, file)
+        
+        
+def main():
+    task_ids = []
+    for url_id in range(start_id, end_id+1):
+        task_ids.append(url_id)
+    
+    pool = ThreadPool(1000)
+
+    results = pool.map(parse, task_ids)
+
+    pool.close()
+    pool.join()
+    
+    add_recipe_to_json(results)
 
 
 if __name__ == "__main__":
+    # self-explanatory
     check_if_json_exists()
-
-    # some windows error handling
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
+    
     # main runner
-    asyncio.run(async_main())
+    main()
 
     # feel the speed
     print(f"\ntime elapsed:  {time.perf_counter() - start_time}")
