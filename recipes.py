@@ -39,7 +39,6 @@ async def fetch(session, url):
     return html
 
 
-
 # parsing html and extracting wanted info
 async def parse(session, url_id):
     url = base_url + str(url_id)
@@ -85,6 +84,7 @@ def check_if_json_exists():
         f.write('[]')
         f.close()
 
+
 def create_recipe_dict(url_id: int, title: element.Tag, ingridients: list, instuctions: element.Tag) -> dict:
     recipe = {'url_id': url_id,
               'title': title.text,
@@ -101,6 +101,7 @@ def create_recipe_dict(url_id: int, title: element.Tag, ingridients: list, instu
 
     return recipe
 
+
 def add_recipe_to_json(recipe: dict):
     with open('recipes.json', "r+") as file:
         data = json.load(file)
@@ -108,6 +109,7 @@ def add_recipe_to_json(recipe: dict):
         data.append(recipe)
         file.seek(0)
         json.dump(data, file, indent=4)
+        file.close()
         # json.dump(recipe, file)
 
 
