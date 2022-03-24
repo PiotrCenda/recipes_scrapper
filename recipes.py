@@ -3,11 +3,10 @@ import time
 import json
 import os
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 from multiprocessing.dummy import Pool as ThreadPool
-
-# TODO: w pętli tworzyć dla każdej strony słownik, appendować go do jsona, jeżeni nic w nim nie ma (chyba nie trzeba sprytniej...)
-# TODO: uładnianie i unifikowanie danych (usuwanie dziwnych znaków, może same małe litery itd)
-# TODO: dodać error handling, bo przy 10000 przepisów na penwo coś się spierdoli
+from tqdm import tqdm
 
 start_time = time.perf_counter()
 
@@ -20,22 +19,18 @@ end_id = 99989
 delchars = "!@#$%^&*_+-=~`{}|[]:\"\\;'<>?/\t\r\n"
 
 
-# fetching html from url
-def fetch(url):
-    response = requests.get(url=url)
-    html = response.text
-    return html
-
-
-# parsing html and extracting wanted info
-def parse(url_id):
-    url = (base_url + str(url_id))
+# fetching and parsing html and extracting wanted info
+def fetch_and_parse(url_id):
     try:
-        html = fetch(url=url)
-    except Exception as e:
-        print(e)  # trzeba pewnie rozwinąć
+        session = requests.Session()        
+        retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 502, 503, 504 ])
+        session.mount('http://', HTTPAdapter(max_retries=retries))
+        response = session.get(url=(base_url + str(url_id)), headers={'User-Agent': 'Mozilla/5.0'}, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"On request get for {url_id}: {e}")
     else:
-        soup = BeautifulSoup(html, 'lxml')
+        soup = BeautifulSoup(response.text, 'lxml')
         recipe_title = soup.find('h3', attrs={"style": "font-family: Helvetica;"})
         recipe_ingridients_table = soup.find('table', attrs={"id": "myTable"}).find_all('tr')
         recipe_instructions = soup.find('div', attrs={"id": "steps"})
@@ -76,29 +71,36 @@ def create_recipe_dict(url_id: int, title: element.Tag, ingridients: list, instu
     return recipe
 
 
-def add_recipe_to_json(recipe: dict):
+def add_recipe_to_json(recipes: list):
     with open('recipes.json', "r+") as file:
         data = json.load(file)
-        print(len(data))
-        data.append(recipe)
+        for recipe in recipes:
+            if recipe is not None:
+                data.append(recipe)
         file.seek(0)
         json.dump(data, file, indent=4)
         file.close()
         
+
+def chunker(seq, size):
+    return (seq[pos:pos + size] for pos in range(0, len(seq), size))
         
-def main():
+        
+def thredpool_runner():
     task_ids = []
+    
     for url_id in range(start_id, end_id+1):
         task_ids.append(url_id)
     
-    pool = ThreadPool(1000)
-
-    results = pool.map(parse, task_ids)
-
-    pool.close()
-    pool.join()
-    
-    add_recipe_to_json(results)
+    chunks_for_loop = 1000
+        
+    for chunck in tqdm(chunker(task_ids, chunks_for_loop), desc=f"Chunks", total=(len(task_ids)//chunks_for_loop)):
+        pool = ThreadPool(100)
+        results = pool.map(fetch_and_parse, chunck)
+        pool.close()
+        pool.join()
+        
+        add_recipe_to_json(results)
 
 
 if __name__ == "__main__":
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     check_if_json_exists()
     
     # main runner
-    main()
+    thredpool_runner()
 
     # feel the speed
-    print(f"\ntime elapsed:  {time.perf_counter() - start_time}")
+    print(f"\nTime elapsed:  {time.perf_counter() - start_time}")

@@ -1,3 +1,7 @@
+# recipes json is too big
+recipes.json
+recipes_final.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
