@@ -3,6 +3,8 @@ import json
 import os
 from fractions import Fraction
 
+start_time = time.perf_counter()
+
 
 def read_json(name: str):
     with open(name, "r+") as file:
@@ -105,3 +107,20 @@ def has_to_taste(input_string: str):
 
 def delete_to_taste(input_string: str):
     return str.lower(input_string).rpartition(' to taste')[0]
+
+
+if __name__ == "__main__":
+    # check_if_json_exists()
+
+    # some windows error handling
+    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    # main runner
+    # asyncio.run(async_main())
+
+    # feel the speed
+    print(f"\ntime elapsed:  {time.perf_counter() - start_time}")
+
+    recipes = read_json('recipes_final.json')
+    recipes = change_quantities_to_float(recipes)
+    save_json('new_recipes.json', recipes)
