@@ -110,17 +110,9 @@ def delete_to_taste(input_string: str):
 
 
 if __name__ == "__main__":
-    # check_if_json_exists()
-
-    # some windows error handling
-    # asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    # main runner
-    # asyncio.run(async_main())
-
-    # feel the speed
-    print(f"\ntime elapsed:  {time.perf_counter() - start_time}")
-
     recipes = read_json('recipes_final.json')
     recipes = change_quantities_to_float(recipes)
     save_json('new_recipes.json', recipes)
+    
+    # feel the speed
+    print(f"\ntime elapsed:  {time.perf_counter() - start_time}")
