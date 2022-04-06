@@ -1,8 +1,5 @@
-# recipes jsons are too big, just generate them
-recipes.json
-recipes_final.json
-new_recipes.json
-foodcentral.json
+# recipes and nutritions jsons are too big, just generate them or get from what's in folder already
+data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
