@@ -2,6 +2,7 @@
 recipes.json
 recipes_final.json
 new_recipes.json
+foodcentral.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
