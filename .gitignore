@@ -1,5 +1,9 @@
 # recipes and nutritions jsons are too big, just generate them or get from what's in folder already
-data/
+data/*
+!data/unique_names_foodcentral.json
+!data/unique_names_recipes.json
+!data/unique_units_foodcentral.json
+!data/unique_units_recipes.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
