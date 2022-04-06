@@ -13,7 +13,7 @@ def read_json(name: str):
 
 
 def save_json(name, recipes):
-    if not os.path.exists('name'):
+    if not os.path.exists(name):
         f = open(name, 'w')
         f.close()
         print('Created .json file')
