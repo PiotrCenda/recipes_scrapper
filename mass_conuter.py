@@ -47,11 +47,14 @@ def name_match(name, names_dictionary):
     return return_stats
 
 
-def match_two_namelists(nameslist_one, namelist_two):
+def match_two_namelists(nameslist_one, namelist_two, threshold=0.6):
     names_matches = []
     
     for name in tqdm(nameslist_one, desc="Matched names"):
-        names_matches.append(name_match(name, namelist_two))
+        match = name_match(name, namelist_two)
+        
+        if match["best_jaro_score"] > threshold and match["best_jaro_wink_score"] > threshold:
+            names_matches.append(match)
     
     return names_matches
 
@@ -65,14 +68,14 @@ if __name__ == "__main__":
     names_foodcentral = list(read_json('data/unique_names_foodcentral.json'))
     names_recipes = list(read_json('data/unique_names_recipes.json'))
     
-    names_matches = match_two_namelists(names_recipes, names_foodcentral)
-    save_dic_as_csv(names_matches, "data/names_matches")
+    names_matches = match_two_namelists(names_recipes, names_foodcentral, threshold=0.8)
+    save_dic_as_csv(names_matches, "data/names_matches2")
     
     units_foodcentral = list(read_json('data/unique_units_foodcentral.json'))
     units_recipes = list(read_json('data/unique_units_recipes.json'))
     
-    unit_matches = match_two_namelists(units_recipes, units_foodcentral)
-    save_dic_as_csv(unit_matches, "data/units_matches")
+    unit_matches = match_two_namelists(units_recipes, units_foodcentral, threshold=0.8)
+    save_dic_as_csv(unit_matches, "data/units_matches2")
     
     # feel the speed
     print(f"\nTime elapsed:  {time.perf_counter() - start_time}s")
