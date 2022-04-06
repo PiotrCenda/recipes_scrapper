@@ -12,14 +12,14 @@ def read_json(name: str):
     return data
 
 
-def save_json(name, recipes):
+def save_json(name, data):
     if not os.path.exists(name):
         f = open(name, 'w')
         f.close()
         print('Created .json file')
 
     with open(name, "r+") as file:
-        json.dump(recipes, file, indent=4)
+        json.dump(data, file, indent=4)
         file.close()
 
 
