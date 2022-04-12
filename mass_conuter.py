@@ -75,57 +75,10 @@ def save_all_matches_csv():
     
     unit_matches = match_two_namelists(units_recipes, units_foodcentral, threshold=0.84)
     save_dic_as_csv(unit_matches, "data/units_matches2")
-    
-
-def clear_foodcentral_for_matching():
-    try:
-        os.remove('data/foodcentral_clean.json')
-    except OSError:
-        pass
-
-    foodcentral = read_json('data/foodcentral.json')
-    
-    data = {}
-    
-    for ingridient in tqdm(foodcentral["SurveyFoods"]):
-        portions = []
-        
-        for portion in ingridient["foodPortions"]:
-            if portion["portionDescription"] != "" and portion["portionDescription"] != "Quantity not specified":
-                portion_data = {}
-                portion_data["gram_weight"] = portion["gramWeight"]
-                portion_data["description"] = portion["portionDescription"]
-                portions.append(portion_data)
-    
-        if portions:
-            description = []
-            
-            for word in word_tokenize(ingridient["description"].lower().replace(r",", "").replace(r"(", "").replace(r")", "")):
-                if word.casefold() not in stop_words:
-                    word_temp = word.casefold()
-                    syns = wordnet.synsets(word_temp, pos = wordnet.NOUN)
-
-                    for syn in syns:
-                        if 'food' in syn.lexname():
-                            description.append(word)
-                            break
-                
-                    
-            # description = re.split(',', ingridient["description"].lower())
-
-            description = " ".join(description)
-            # description = description[:25]
-            
-            if description not in data.keys():
-                data[description] = portions
-            elif len(portions) > len(data[description]):
-                data[description] = portions
-                    
-    save_json('data/foodcentral_clean.json', data)
 
 
-def ingridient_match(name, names_dictionary):
-    description = []
+def name_clean(name):
+    cleaned_name = []
     
     for word in word_tokenize(name):
         if word.casefold() not in stop_words:
@@ -134,41 +87,124 @@ def ingridient_match(name, names_dictionary):
 
             for syn in syns:
                 if 'food' in syn.lexname():
-                    description.append(word)
+                    cleaned_name.append(word)
                     break
 
-    name = " ".join(description)
+    cleaned_name = " ".join(cleaned_name)
+    
+    return cleaned_name
+
+
+def name_clean_quantity(name):
+    cleaned_name = []
+    
+    name_no_symbols = name.lower().replace(r"(", "").replace(r")", "")
+    name_no_numbers = re.sub(r'\d+', '', name_no_symbols)
+    
+    for word in word_tokenize(name_no_numbers):
+        cleaned_name.append(word)
+
+    cleaned_name = " ".join(cleaned_name)
+    cleaned_name = cleaned_name.split(",")[0]
+    
+    return cleaned_name
+
+
+def clean_foodcentral_for_matching():
+    try:
+        os.remove("data/foodcentral_clean.json")
+    except OSError:
+        pass
+
+    foodcentral = read_json("data/foodcentral.json")
+    
+    data = {}
+    
+    for ingridient in tqdm(foodcentral["SurveyFoods"], desc="Cleaning foodcentral data"):
+        portions = []
+        
+        for portion in ingridient["foodPortions"]:
+            if portion["portionDescription"] != "" and portion["portionDescription"] != "Quantity not specified":
+                portion_data = {}
+                portion_data["gram_weight"] = portion["gramWeight"]
+                portion_data["description"] = name_clean_quantity(portion["portionDescription"])
+                portions.append(portion_data)
+    
+        if portions:
+            description = name_clean(ingridient["description"].lower().replace(r",", "").replace(r"(", "").replace(r")", ""))
+            
+            if description not in data.keys():
+                data[description] = portions
+            elif len(portions) > len(data[description]):
+                data[description] = portions
+                    
+    save_json("data/foodcentral_clean.json", data)
+
+
+def name_match(name, names_dictionary, threshold=0.75):
+    name = name_clean(name)
     
     best_match = jaro_winkler_similarity(name, names_dictionary[0])
-    best_name = ""
+    if jaro_winkler_similarity(name, names_dictionary[0]) > threshold:
+        best_name = names_dictionary[0]
+    else:
+        best_name = ""
     
     for ith_name in names_dictionary:
-        if best_match < jaro_winkler_similarity(name, ith_name) and jaro_winkler_similarity(name, ith_name) > 0.75:
+        if best_match < jaro_winkler_similarity(name, ith_name) and jaro_winkler_similarity(name, ith_name) > threshold:
             best_match = jaro_winkler_similarity(name, ith_name)
             best_name = ith_name
     
     return best_name
 
-def recipes():
-    foodcentral = read_json('data/foodcentral_clean.json')
-    recipes = read_json('data/new_recipes.json')
+
+def ingridient_match():
+    foodcentral = read_json("data/foodcentral_clean.json")
+    recipes = read_json("data/new_recipes.json")
     
     names_to_match = list(foodcentral.keys())
     
     updated_data = {}
     
-    for i, recipe in enumerate(recipes):
+    for recipe in tqdm(recipes, desc="Matching names"):
         for ingridient in recipe["ingridients"]:
-            print(f"{ingridient['name']} matched: {ingridient_match(ingridient['name'], names_to_match)}")
+            # print(f"{ingridient['name']} matched: {name_match(ingridient['name'], names_to_match)}")
+            updated_data[ingridient['name']] = name_match(ingridient['name'], names_to_match)
+        # print("\n")
+    
+    save_json("data/matched_names.json", updated_data)
+
+
+def compute_mass(threshold=0.70):
+    matched_names = read_json("data/matched_names.json")
+    foodcentral = read_json("data/foodcentral_clean.json")
+    recipes = read_json("data/new_recipes.json")
+
+    for recipe in tqdm(recipes, desc="Computing ingridients weights"):
+        for ingridient in recipe["ingridients"]:
+            possible_units = foodcentral[matched_names[ingridient['name']]]
+            
+            best_unit_score = jaro_winkler_similarity(ingridient["unit"], possible_units[0]["description"])
+            
+            if jaro_winkler_similarity(ingridient["unit"], possible_units[0]["description"]) > threshold:
+                best_unit_mass = possible_units[0]["gram_weight"] 
+            else:
+                best_unit_mass = 0
+            
+            for unit in possible_units:
+                if best_unit_score < jaro_winkler_similarity(ingridient["unit"], unit["description"]) and jaro_winkler_similarity(ingridient["unit"], unit["description"]) > threshold:
+                    best_unit_score = jaro_winkler_similarity(ingridient["unit"], unit["description"])
+                    best_unit_mass = unit["gram_weight"]
+                
+            ingridient["grams"] = ingridient["quantity"] * best_unit_mass
         
-        print("\n")
-        if i >= 50:
-            break
-     
-     
+    save_json("data/recipes_with_mass.json", recipes)
+    
+
 if __name__ == "__main__":
-    clear_foodcentral_for_matching()
-    recipes()
+    clean_foodcentral_for_matching()
+    ingridient_match()
+    compute_mass()
     
     # feel the speed
     print(f"\nTime elapsed:  {time.perf_counter() - start_time}s")
